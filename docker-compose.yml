@@ -1,0 +1,44 @@
+version: "3.5"
+
+services:
+  dind:
+    image: docker:20-dind
+    container_name: dind
+    restart: always
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    command:
+      - --storage-driver=overlay2
+
+  runner:
+    restart: always
+    image: gitlab/gitlab-runner:v15.8.1
+    container_name: gitlab-runner-1
+    depends_on:
+      - dind
+    environment:
+      - DOCKER_HOST=tcp://dind:2375
+    volumes:
+      - ./config:/etc/gitlab-runner:z
+
+  register-runner:
+    restart: 'no'
+    image: gitlab/gitlab-runner:v15.8.1
+    depends_on:
+      - dind
+    environment:
+      - CI_SERVER_URL=${GITLAB_URL}
+      - REGISTRATION_TOKEN=${GITLAB_RUNNER_TOKEN}
+    command:
+      - register
+      - --non-interactive
+      - --locked=false
+      - --name=gitlab-runner-1
+      - --executor=docker
+      - --docker-image=docker:20-dind
+      - --docker-volumes=/var/run/docker.sock:/var/run/docker.sock
+      - --docker-volumes=/home/gitlab-runner/.m2:/root/.m2
+      - --docker-pull-policy=if-not-present
+    volumes:
+      - ./config:/etc/gitlab-runner:z

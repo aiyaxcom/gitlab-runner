@@ -1,0 +1,4 @@
+.idea
+config
+**/*.tar
+export_variables.sh
